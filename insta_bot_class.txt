@@ -1,0 +1,247 @@
+from selenium.webdriver.common.keys import Keys
+import time
+import random
+from selenium.common.exceptions import NoSuchElementException
+from selenium import webdriver
+import os
+import requests
+
+class insta_bot():
+
+    def __init__(self, username, password, userpages):
+        self.userpages = userpages
+        self.username = username
+        self.password = password
+        self.browser = webdriver.Chrome("..\chromedriver\chromedriver.exe")
+
+    def login(self, username_, password_):
+        browser = self.browser
+        try:
+            browser.get('https://www.instagram.com')
+            time.sleep(random.randrange(3, 5))
+
+            username_input = browser.find_element_by_name('username')
+            username_input.clear()
+            username_input.send_keys(username_)
+
+            time.sleep(1)
+
+            password_input = browser.find_element_by_name('password')
+            password_input.clear()
+            password_input.send_keys(password_)
+
+            password_input.send_keys(Keys.ENTER)
+
+            time.sleep(random.randrange(2, 3))
+            # browser.get('https://www.instagram.com/')
+            time.sleep(2)
+
+        except Exception as ex:
+            print(ex)
+            self.quit_browser()
+
+
+
+    def quit_browser(self):
+        self.browser.close()
+        self.browser.quit()
+
+
+    def photo_likes_for_users(self, value):
+        browser = self.browser
+        for i in range(len(self.userpages)):
+            browser.get(f'https://www.instagram.com/{self.userpages[i]}/')
+            for j in range(1, (value)+1):
+                try:
+                    photo = browser.find_element_by_xpath(f'/html/body/div[1]/section/main/div/div[3]/article/div[1]/div/div[1]/div[{j}]/a')
+                    photo.click()
+                    time.sleep(1.5)
+                    like_button = browser.find_element_by_xpath('/html/body/div[6]/div[2]/div/article/div[3]/section[1]/span[1]/button')
+                    like_button.click()
+                    time.sleep(1.5)
+                    close_photo = browser.find_element_by_xpath('/html/body/div[6]/div[3]/button')
+                    close_photo.click()
+                    time.sleep(1)
+                except:
+                    break
+        time.sleep(3)
+
+    def unsubscribe(self, value):
+        try:
+            for i in range(int(value/10)):
+                browser = self.browser
+                browser.get(f'https://www.instagram.com/{self.username}/')
+                time.sleep(random.randrange(6, 8))
+                click_button = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/ul/li[3]/a')
+                click_button.click()
+                time.sleep(random.randrange(6, 8))
+                for j in range(1, 11):
+                    click_button = browser.find_element_by_xpath(
+                        f'/html/body/div[6]/div/div/div[3]/ul/div/li[{str(j)}]/div/div[3]/button')
+                    click_button.click()
+                    time.sleep(random.randrange(1, 3))
+                    click_button = browser.find_element_by_xpath('/html/body/div[7]/div/div/div/div[3]/button[1]')
+                    click_button.click()
+                    time.sleep(random.randrange(60, 90))
+        except Exception as ex:
+            print(ex)
+            self.quit_browser()
+
+    def collect_subscribers(self, account):
+        browser = self.browser
+        users = []
+        browser.get(f'https://www.instagram.com/{account}/')
+        time.sleep(1.5)
+
+        followers_count = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/span').get_attribute('title')
+        if ' ' in followers_count:
+            followers_count = followers_count.replace(' ', '')
+
+        followers_count = int(followers_count)
+        if followers_count > 2400:
+            followers_count = 2400
+
+        loops_count = followers_count / 12
+        print(f"Число итераций: {loops_count}")
+        time.sleep(12)
+
+        followers_ul = browser.find_element_by_xpath('/html/body/div[6]/div/div/div[2]')
+        followers_urls = []
+        for i in range(1, int(loops_count) + 1):
+            browser.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", followers_ul)
+            time.sleep(3)
+            print(f"Итерация #{i}")
+
+        all_urls_div = followers_ul.find_elements_by_tag_name("li")
+
+        for url in all_urls_div:
+            url = url.find_element_by_tag_name("a").get_attribute("href")
+            if url not in followers_urls:
+                url = url[+26:-1]
+                followers_urls.append(url)
+        time.sleep(3)
+
+        with open(f"{account}_folovers.txt", "w") as file:
+            for i in followers_urls:
+                file.write(i + '\n')
+
+
+    def get_all_posts_urls(self, userpage):
+        browser = self.browser
+        browser.get(f'https://www.instagram.com/{userpage}/')
+        time.sleep(3)
+        posts_count = int(browser.find_element_by_xpath(
+            "/html/body/div[1]/section/main/div/header/section/ul/li[1]/span/span").text)
+        loops_count = int(posts_count / 12)
+        print(loops_count)
+        posts_urls = []
+        for i in range(0, loops_count):
+            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(random.randrange(2, 4))
+
+        hrefs = browser.find_elements_by_tag_name('a')
+        hrefs = [item.get_attribute('href') for item in hrefs if "/p/" in item.get_attribute('href')]
+
+        for href in hrefs:
+            posts_urls.append(href)
+
+        for i in posts_urls:
+            print(i)
+
+        file_name = userpage
+        file_name = file_name[:-2]
+        with open(f'{file_name}.txt', 'w') as file:
+            for post_url in posts_urls:
+                file.write(post_url + "\n")
+
+    def download_image_and_video(self, userpage):
+        userpage = userpage[:-2]
+        browser = self.browser
+        file = open(f"{userpage}.txt", "r")
+        Url = file.readlines()
+        j = 1
+        for i in Url:
+            i = i[:-2]
+            browser.get(i)
+            time.sleep(3)
+            img_src_url = browser.find_element_by_xpath("//img[@class='FFVAD']").get_attribute("src")
+            get_img = requests.get(img_src_url)
+            time.sleep(3)
+            with open(f"dirs/{userpage}_{j}_img.jpg", "wb") as img_file:
+                img_file.write(get_img.content)
+            j += 1
+            time.sleep(3)
+
+    def messages_all_user(self, userpages, text):
+        browser = self.browser
+
+        browser.get(f'https://www.instagram.com/{userpages}/')
+        time.sleep(3)
+                    # /html/body/div[1]/section/main/div/header/section/div[2]/div/div/button
+                    # //section[2]/button
+                    # sqdOP  L3NKy _4pI4F  y3zKF     /
+                    # /html/body/div[1]/section/main/div/header/section/div[1]/div[1]/div/div/div/span/span[1]/button
+        wrong_link = '//section[button/@class= sqdOP  L3NKy _4pI4F  y3zKF     ]'
+        # if self.xpath_exists(wrong_link):
+        browser.find_element_by_xpath(wrong_link).click()
+        time.sleep(random.randrange(4, 6))
+
+        wrong_link = '/html/body/div[1]/section/main/div/div/article/div[1]/div/h2'
+        if self.xpath_exists(wrong_link):
+            return
+
+        write_message = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[2]/div/div[1]/button')
+        write_message.click()
+        time.sleep(random.randrange(4, 6))
+
+        message_input = browser.find_element_by_xpath('/html/body/div[1]/section/div/div[2]/div/div/div[2]/div[2]/div/div[2]/div/div/div[2]/textarea')
+        message_input.clear()
+        message_input.send_keys(text)
+        time.sleep(random.randrange(2, 4))
+        message_input.send_keys(Keys.ENTER)
+        time.sleep(random.randrange(3,5))
+
+    def xpath_exists(self, url):
+        browser = self.browser
+        try:
+            browser.find_element_by_xpath(url)
+            exist = True
+        except NoSuchElementException:
+            exist = False
+        return exist
+
+    def subscription(self, UserPages):
+        browser = self.browser
+        j = 1
+        for i in UserPages:
+            if j % 30 == 0:
+                random_time = random.randrange(900, 1400)
+                print('Ботинок: Буду ждать ' + str(random_time) + ' секунд')
+                time.sleep(random_time)
+            browser.get(f'https://www.instagram.com/{i}/')
+            time.sleep(random.randrange(6, 8))
+
+            already_signed = '/html/body/div[1]/section/main/div/header/section/div[2]/div/div[1]/button/div'
+            request = '/html/body/div[1]/section/main/div/header/section/div[2]/div/div/button'
+            sign = '/html/body/div[1]/section/main/div/header/section/div[2]/div/div/div/span/span[1]/button'
+            try:
+                print(f'Итерация #{j}')
+                if (insta_bot.xpath_exists(self, already_signed)):
+                    print('Ботинок: Я Пропустил')
+                    continue
+                if (insta_bot.xpath_exists(self, request)):
+                    print('Ботинок: Я зделал Запрос')
+                    button = browser.find_element_by_xpath(request)
+                if (insta_bot.xpath_exists(self, sign)):
+                    print('Ботинок: Я Подписался')
+                    button = browser.find_element_by_xpath(sign)
+                button.click()
+            except:
+                print('Ботинок: Ошибочка')
+                for i in range(0, 1000):
+                    print('\a')
+                continue
+            finally:
+                j += 1
+
+            time.sleep(random.randrange(60, 91))
